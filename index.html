@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="Sistema de Sorteio Profissional Free Fire">
+  <title>Free Fire Sorteio - Sistema Profissional</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+  <script>
+    window.firebaseErrorHandler = function(error) {
+      if (error.message && error.message.includes('API key not valid')) {
+        return;
+      }
+      if (error.code === 'unavailable' || error.code === 'permission-denied') {
+        return;
+      }
+    };
+  </script>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <div class="logo">
+        <i class="fas fa-fire"></i>
+        <span>Free Fire Sorteio</span>
+      </div>
+      <nav class="nav-menu">
+        <a href="#" class="nav-link" data-track="nav-home"><i class="fas fa-home"></i> Início</a>
+        <a href="#" class="nav-link" data-track="nav-about"><i class="fas fa-info-circle"></i> Sobre</a>
+        <button class="nav-link btn-generate-nick" data-track="nav-generate-nick">
+          <i class="fas fa-magic"></i> Gerar Nick
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="hero-section" id="heroSection">
+      <h1 class="hero-title" id="heroTitle">
+        <i class="fas fa-trophy"></i>
+        <span id="heroTitleText">Sistema de Sorteio Profissional</span>
+      </h1>
+      <p class="hero-subtitle" id="heroSubtitle">Digite o ID do jogador e sorteie prêmios incríveis!</p>
+    </div>
+
+    <div class="container design-grid">
+      <div class="image-box" style="grid-area: i1;" data-index="0" data-track="image-box-0"></div>
+      <div class="image-box" style="grid-area: i2;" data-index="1" data-track="image-box-1"></div>
+      <div class="image-box" style="grid-area: i3;" data-index="2" data-track="image-box-2"></div>
+      <div class="image-box" style="grid-area: i4;" data-index="3" data-track="image-box-3"></div>
+      <div class="image-box" style="grid-area: i5;" data-index="4" data-track="image-box-4"></div>
+      
+      <div class="controls" style="grid-area: center;">
+        <div class="input-wrapper">
+          <i class="fas fa-user input-icon"></i>
+          <input type="text" id="playerId" placeholder="Digite o ID do jogador" maxlength="13" inputmode="numeric" pattern="[0-9]*">
+        </div>
+        <button id="spinButton" class="spin-btn" data-track="spin-button">
+          <i class="fas fa-dice"></i>
+          <span>Sortear</span>
+        </button>
+        <div class="info-text">
+          <i class="fas fa-info-circle"></i>
+          Clique nas imagens para selecionar ou arraste imagens para personalizar
+        </div>
+      </div>
+      
+      <div class="image-box" style="grid-area: i6;" data-index="5" data-track="image-box-5"></div>
+      <div class="image-box" style="grid-area: i7;" data-index="6" data-track="image-box-6"></div>
+      <div class="image-box" style="grid-area: i8;" data-index="7" data-track="image-box-7"></div>
+      <div class="image-box" style="grid-area: i9;" data-index="8" data-track="image-box-8"></div>
+      <div class="image-box" style="grid-area: i10;" data-index="9" data-track="image-box-9"></div>
+    </div>
+  </main>
+
+  <div id="overlay" class="overlay">
+    <div class="overlay-content">
+      <button class="close-overlay" id="closeOverlay" data-track="close-overlay">
+        <i class="fas fa-times"></i>
+      </button>
+      
+      <div class="result-header">
+        <i class="fas fa-trophy trophy-icon"></i>
+        <h2 class="parabens-titulo">Parabéns!</h2>
+      </div>
+
+      <div id="selectedImagesContainer" class="selected-images"></div>
+
+      <div id="playerInfoContainer" class="player-info">
+        <img id="playerAvatar" src="" alt="Avatar do Jogador" class="player-avatar" />
+        <h2 id="playerName" class="player-name">-</h2>
+        <p id="playerLevel" class="player-level">-</p>
+        <p id="lowplayer" class="low-player">-</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="nickGeneratorModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2><i class="fas fa-magic"></i> Gerador de Nicks</h2>
+        <button class="modal-close" data-track="close-nick-modal">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="nick-options">
+          <select id="nickStyle" class="nick-select">
+            <option value="pro">Pro Player</option>
+            <option value="cool">Cool</option>
+            <option value="brazil">Brasil</option>
+            <option value="fire">Fire</option>
+            <option value="legend">Lendário</option>
+            <option value="random">Aleatório</option>
+          </select>
+          <button id="generateNickBtn" class="btn-generate" data-track="generate-nick">
+            <i class="fas fa-dice"></i> Gerar Nick
+          </button>
+        </div>
+        <div id="generatedNick" class="generated-nick"></div>
+        <button id="copyNickBtn" class="btn-copy" data-track="copy-nick" style="display: none;">
+          <i class="fas fa-copy"></i> Copiar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <p>&copy; 2024 Free Fire Sorteio. Todos os direitos reservados.</p>
+      <div class="footer-links">
+        <a href="#" data-track="footer-discord"><i class="fab fa-discord"></i></a>
+        <a href="#" data-track="footer-instagram"><i class="fab fa-instagram"></i></a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="firebase-config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
