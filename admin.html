@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Painel Administrativo - Free Fire Sorteio</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="admin.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    window.firebaseErrorHandler = function(error) {
+      if (error.message && error.message.includes('API key not valid')) {
+        return;
+      }
+      if (error.code === 'unavailable' || error.code === 'permission-denied') {
+        return;
+      }
+    };
+
+  </script>
+</head>
+<body>
+  <div id="loginScreen" class="login-screen">
+    <div class="login-container">
+      <div class="login-header">
+        <i class="fas fa-shield-alt"></i>
+        <h1>Painel Administrativo</h1>
+        <p>Acesso Restrito</p>
+      </div>
+      <form id="loginForm" class="login-form">
+        <div class="input-group">
+          <i class="fas fa-user"></i>
+          <input type="text" id="username" placeholder="Usuário" required autocomplete="username">
+        </div>
+        <div class="input-group">
+          <i class="fas fa-lock"></i>
+          <input type="password" id="password" placeholder="Senha" required autocomplete="current-password">
+          <button type="button" class="toggle-password" id="togglePassword">
+            <i class="fas fa-eye"></i>
+          </button>
+        </div>
+        <button type="submit" class="login-btn">
+          <i class="fas fa-sign-in-alt"></i>
+          Entrar
+        </button>
+        <div id="loginError" class="error-message"></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="adminPanel" class="admin-panel" style="display: none;">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <i class="fas fa-fire"></i>
+        <h2>Admin Panel</h2>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-section="dashboard">
+          <i class="fas fa-home"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="#" class="nav-item" data-section="preview">
+          <i class="fas fa-eye"></i>
+          <span>Pré-visualização</span>
+        </a>
+        <a href="#" class="nav-item" data-section="analytics">
+          <i class="fas fa-chart-line"></i>
+          <span>Analytics</span>
+        </a>
+        <a href="#" class="nav-item" data-section="devices">
+          <i class="fas fa-mobile-alt"></i>
+          <span>Dispositivos</span>
+        </a>
+        <a href="#" class="nav-item" data-section="settings">
+          <i class="fas fa-cog"></i>
+          <span>Configurações</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="logout-btn" id="logoutBtn">
+          <i class="fas fa-sign-out-alt"></i>
+          Sair
+        </button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="content-header">
+        <div class="header-left">
+          <h1 id="pageTitle">Dashboard</h1>
+          <p id="pageSubtitle">Visão geral do sistema</p>
+        </div>
+        <div class="header-right">
+          <div class="user-info">
+            <i class="fas fa-user-circle"></i>
+            <span id="loggedUser">Admin</span>
+          </div>
+          <button class="notifications-btn" id="notificationsBtn">
+            <i class="fas fa-bell"></i>
+            <span class="badge" id="notificationsBadge">0</span>
+          </button>
+        </div>
+      </header>
+
+      <section id="dashboardSection" class="content-section active">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon green">
+              <i class="fas fa-mobile-alt"></i>
+            </div>
+            <div class="stat-info">
+              <h3>Novos Dispositivos</h3>
+              <p class="stat-value" id="newDevices">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon blue">
+              <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-info">
+              <h3>Total de Visitantes</h3>
+              <p class="stat-value" id="totalVisits">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon purple">
+              <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="stat-info">
+              <h3>Visitas Hoje</h3>
+              <p class="stat-value" id="todayVisits">0</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <div class="card">
+            <div class="card-header">
+              <h3><i class="fas fa-list"></i> Atividades Recentes</h3>
+            </div>
+            <div class="card-body">
+              <div id="recentActivities" class="activities-list"></div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <section id="previewSection" class="content-section">
+        <div class="preview-container">
+          <div class="preview-header">
+            <h2><i class="fas fa-eye"></i> Pré-visualização em Tempo Real</h2>
+            <div class="preview-controls">
+              <button class="btn-primary" id="refreshPreview">
+                <i class="fas fa-sync-alt"></i>
+                Atualizar
+              </button>
+              <button class="btn-secondary" id="openPreview">
+                <i class="fas fa-external-link-alt"></i>
+                Abrir em Nova Aba
+              </button>
+            </div>
+          </div>
+          <div class="preview-frame-container">
+            <iframe id="previewFrame" src="index.html?preview=true" class="preview-frame"></iframe>
+          </div>
+        </div>
+      </section>
+
+      <section id="analyticsSection" class="content-section">
+        <div class="section-header">
+          <h2><i class="fas fa-chart-line"></i> Analytics Detalhado</h2>
+        </div>
+        <div class="analytics-grid">
+          <div class="card">
+            <div class="card-header">
+              <h3>Itens Mais Selecionados</h3>
+            </div>
+            <div class="card-body">
+              <canvas id="itemsChart"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <h3>PC vs Mobile</h3>
+            </div>
+            <div class="card-body">
+              <canvas id="platformsChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="devicesSection" class="content-section">
+        <div class="section-header">
+          <h2><i class="fas fa-mobile-alt"></i> Dispositivos Conectados</h2>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3>Lista de Dispositivos</h3>
+          </div>
+          <div class="card-body">
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>IP</th>
+                    <th>Localização</th>
+                    <th>Último Acesso</th>
+                    <th>Novo</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="devicesTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="settingsSection" class="content-section">
+        <div class="section-header">
+          <h2><i class="fas fa-cog"></i> Configurações</h2>
+        </div>
+        <div class="settings-split-container">
+          <div class="settings-panel">
+            <div class="settings-scroll">
+              <div class="settings-grid">
+                <div class="settings-category">
+                  <h2 class="category-title"><i class="fas fa-palette"></i> Aparência Geral</h2>
+                </div>
+
+                <div class="settings-group compact">
+                  <h3><i class="fas fa-palette"></i> Cores do Sistema</h3>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label>Fundo Principal</label>
+                      <input type="color" id="backgroundColor" value="#0f172a" class="setting-input compact">
+                    </div>
+                    <div class="setting-item compact">
+                      <label>Fundo Secundário</label>
+                      <input type="color" id="backgroundColorSecondary" value="#1e293b" class="setting-input compact">
+                    </div>
+                  </div>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label>Cor do Botão</label>
+                      <input type="color" id="buttonColor" value="#3b82f6" class="setting-input compact">
+                    </div>
+                    <div class="setting-item compact">
+                      <label>Botão (Hover)</label>
+                      <input type="color" id="buttonHoverColor" value="#2563eb" class="setting-input compact">
+                    </div>
+                  </div>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label>Cor de Destaque</label>
+                      <input type="color" id="accentColor" value="#10b981" class="setting-input compact">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-group compact">
+                  <h3><i class="fas fa-text-height"></i> Textos e Títulos</h3>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label>Título</label>
+                      <input type="text" id="heroTitle" value="" class="setting-input compact" placeholder="Título">
+                    </div>
+                    <div class="setting-item compact">
+                      <label>Tamanho</label>
+                      <div class="slider-container">
+                        <input type="range" id="heroTitleSize" min="24" max="96" value="48" step="2" class="setting-slider">
+                        <span id="heroTitleSizeValue" class="slider-value">48px</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label>Cor do Título</label>
+                      <input type="color" id="heroTitleColor" value="#f1f5f9" class="setting-input compact">
+                    </div>
+                    <div class="setting-item compact">
+                      <label>Subtítulo</label>
+                      <input type="text" id="heroSubtitle" value="Digite o ID do jogador e sorteie prêmios incríveis!" class="setting-input compact" placeholder="Subtítulo">
+                    </div>
+                  </div>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label>Tamanho Subtítulo</label>
+                      <div class="slider-container">
+                        <input type="range" id="heroSubtitleSize" min="12" max="32" value="20" step="1" class="setting-slider">
+                        <span id="heroSubtitleSizeValue" class="slider-value">20px</span>
+                      </div>
+                    </div>
+                    <div class="setting-item compact">
+                      <label>Cor do Subtítulo</label>
+                      <input type="color" id="heroSubtitleColor" value="#94a3b8" class="setting-input compact">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-category">
+                  <h2 class="category-title"><i class="fas fa-dice"></i> Configurações da Roleta</h2>
+                </div>
+
+                <div class="settings-group compact">
+                  <h3><i class="fas fa-cube"></i> Itens da Roleta</h3>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label>Design</label>
+                      <select id="rouletteDesign" class="setting-input compact">
+                        <option value="grid">Grid</option>
+                        <option value="circular">Circular</option>
+                        <option value="linear">Linear</option>
+                      </select>
+                    </div>
+                    <div class="setting-item compact">
+                      <label>Animação Itens</label>
+                      <select id="rouletteAnimation" class="setting-input compact">
+                        <option value="none">Nenhuma</option>
+                        <option value="bounce">Bounce</option>
+                        <option value="pulse">Pulse</option>
+                        <option value="shake">Shake</option>
+                        <option value="rotate">Rotate</option>
+                        <option value="glow">Glow</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label>Tamanho Itens</label>
+                      <div class="slider-container">
+                        <input type="range" id="rouletteBoxSize" min="100" max="300" value="180" step="10" class="setting-slider">
+                        <span id="rouletteBoxSizeValue" class="slider-value">180px</span>
+                      </div>
+                    </div>
+                    <div class="setting-item compact">
+                      <label>Espaçamento</label>
+                      <div class="slider-container">
+                        <input type="range" id="rouletteGap" min="0" max="50" value="32" step="2" class="setting-slider">
+                        <span id="rouletteGapValue" class="slider-value">32px</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label>Largura Container</label>
+                      <input type="text" id="rouletteContainerWidth" value="auto" placeholder="auto, 800px" class="setting-input compact">
+                    </div>
+                    <div class="setting-item compact">
+                      <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
+                        <input type="checkbox" id="enableDragDrop">
+                        <span>Arrastar Itens</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-group compact">
+                  <h3><i class="fas fa-box"></i> Container da Roleta</h3>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label>Animação Container</label>
+                      <select id="containerAnimation" class="setting-input compact">
+                        <option value="none">Nenhuma</option>
+                        <option value="pulse">Pulse</option>
+                        <option value="glow">Brilho</option>
+                        <option value="float">Flutuar</option>
+                        <option value="rotate">Rotação Sutil</option>
+                        <option value="shimmer">Brilho Animado</option>
+                      </select>
+                    </div>
+                    <div class="setting-item compact">
+                      <label>Velocidade Anim.</label>
+                      <div class="slider-container">
+                        <input type="range" id="containerAnimationSpeed" min="1" max="10" value="5" step="1" class="setting-slider">
+                        <span id="containerAnimationSpeedValue" class="slider-value">5</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label>Borda</label>
+                      <div class="slider-container">
+                        <input type="range" id="containerBorderWidth" min="0" max="10" value="2" step="1" class="setting-slider">
+                        <span id="containerBorderWidthValue" class="slider-value">2px</span>
+                      </div>
+                    </div>
+                    <div class="setting-item compact">
+                      <label>Cor da Borda</label>
+                      <input type="color" id="containerBorderColor" value="#6366f1" class="setting-input compact">
+                    </div>
+                  </div>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label>Blur do Fundo</label>
+                      <div class="slider-container">
+                        <input type="range" id="containerBackdropBlur" min="0" max="100" value="50" step="5" class="setting-slider">
+                        <span id="containerBackdropBlurValue" class="slider-value">50px</span>
+                      </div>
+                    </div>
+                    <div class="setting-item compact">
+                      <label>Opacidade Fundo</label>
+                      <div class="slider-container">
+                        <input type="range" id="containerBackgroundOpacity" min="0" max="100" value="40" step="5" class="setting-slider">
+                        <span id="containerBackgroundOpacityValue" class="slider-value">40%</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label>Raio das Bordas</label>
+                      <div class="slider-container">
+                        <input type="range" id="containerBorderRadius" min="0" max="50" value="32" step="2" class="setting-slider">
+                        <span id="containerBorderRadiusValue" class="slider-value">32px</span>
+                      </div>
+                    </div>
+                    <div class="setting-item compact">
+                      <label>Padding Container</label>
+                      <div class="slider-container">
+                        <input type="range" id="containerPaddingInner" min="0" max="100" value="64" step="4" class="setting-slider">
+                        <span id="containerPaddingInnerValue" class="slider-value">64px</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label>Intensidade Sombra</label>
+                      <div class="slider-container">
+                        <input type="range" id="containerShadowIntensity" min="0" max="100" value="60" step="5" class="setting-slider">
+                        <span id="containerShadowIntensityValue" class="slider-value">60%</span>
+                      </div>
+                    </div>
+                    <div class="setting-item compact">
+                      <label>Cor Sombra</label>
+                      <input type="color" id="containerShadowColor" value="#000000" class="setting-input compact">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-category">
+                  <h2 class="category-title"><i class="fas fa-layer-group"></i> Fundo e Animações</h2>
+                </div>
+
+                <div class="settings-group compact">
+                  <h3><i class="fas fa-magic"></i> Animação de Fundo</h3>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label>Tipo Animação</label>
+                      <select id="backgroundAnimation" class="setting-input compact">
+                        <option value="none">Nenhuma</option>
+                        <option value="gradient">Gradiente</option>
+                        <option value="particles">Partículas</option>
+                        <option value="waves">Ondas</option>
+                        <option value="grid">Grid</option>
+                        <option value="stars">Estrelas</option>
+                        <option value="aurora">Aurora</option>
+                        <option value="matrix">Matrix</option>
+                        <option value="nebula">Nebulosa</option>
+                      </select>
+                    </div>
+                    <div class="setting-item compact">
+                      <label>Velocidade</label>
+                      <div class="slider-container">
+                        <input type="range" id="animationSpeed" min="1" max="10" value="5" step="1" class="setting-slider">
+                        <span id="animationSpeedValue" class="slider-value">5</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label>Opacidade Anim.</label>
+                      <div class="slider-container">
+                        <input type="range" id="animationOpacity" min="0" max="100" value="30" step="5" class="setting-slider">
+                        <span id="animationOpacityValue" class="slider-value">30%</span>
+                      </div>
+                    </div>
+                    <div class="setting-item compact">
+                      <label>Imagem de Fundo</label>
+                      <input type="url" id="backgroundImageUrl" placeholder="URL da imagem" class="setting-input compact">
+                    </div>
+                  </div>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label>Vídeo de Fundo</label>
+                      <input type="url" id="backgroundVideoUrl" placeholder="URL do vídeo" class="setting-input compact">
+                    </div>
+                    <div class="setting-item compact">
+                      <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
+                        <input type="checkbox" id="backgroundVideoLoop">
+                        <span>Loop Vídeo</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label>Opacidade Fundo</label>
+                      <div class="slider-container">
+                        <input type="range" id="backgroundOverlayOpacity" min="0" max="100" value="50" step="5" class="setting-slider">
+                        <span id="backgroundOverlayOpacityValue" class="slider-value">50%</span>
+                      </div>
+                    </div>
+                    <div class="setting-item compact">
+                      <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
+                        <input type="checkbox" id="backgroundVideoAutoplay">
+                        <span>Auto-play Vídeo</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-category">
+                  <h2 class="category-title"><i class="fas fa-clock"></i> Configurações do Sorteio</h2>
+                </div>
+
+                <div class="settings-group compact">
+                  <h3><i class="fas fa-spinner"></i> Animação do Sorteio</h3>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label>Duração</label>
+                      <div class="slider-container">
+                        <input type="range" id="spinDuration" min="1000" max="15000" value="5000" step="100" class="setting-slider">
+                        <span id="spinDurationValue" class="slider-value">5000ms</span>
+                      </div>
+                    </div>
+                    <div class="setting-item compact">
+                      <label>Velocidade</label>
+                      <div class="slider-container">
+                        <input type="range" id="spinSpeed" min="50" max="500" value="100" step="10" class="setting-slider">
+                        <span id="spinSpeedValue" class="slider-value">100ms</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
+                        <input type="checkbox" id="spinDeceleration">
+                        <span>Desaceleração</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-category">
+                  <h2 class="category-title"><i class="fas fa-ruler-combined"></i> Layout e Espaçamentos</h2>
+                </div>
+
+                <div class="settings-group compact">
+                  <h3><i class="fas fa-arrows-alt-v"></i> Espaçamentos do Hero</h3>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label>Margem Superior</label>
+                      <div class="slider-container">
+                        <input type="range" id="heroMarginTop" min="0" max="100" value="0" step="4" class="setting-slider">
+                        <span id="heroMarginTopValue" class="slider-value">0px</span>
+                      </div>
+                    </div>
+                    <div class="setting-item compact">
+                      <label>Margem Inferior</label>
+                      <div class="slider-container">
+                        <input type="range" id="heroMarginBottom" min="0" max="100" value="0" step="4" class="setting-slider">
+                        <span id="heroMarginBottomValue" class="slider-value">0px</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-category">
+                  <h2 class="category-title"><i class="fas fa-cogs"></i> Funções Avançadas</h2>
+                </div>
+
+                <div class="settings-group compact">
+                  <h3><i class="fas fa-arrows-alt"></i> Posicionamento Livre</h3>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
+                        <input type="checkbox" id="enablePositioning">
+                        <span>Ativar Modo Posicionamento</span>
+                      </label>
+                      <p class="setting-hint">Permite arrastar e posicionar itens livremente</p>
+                    </div>
+                  </div>
+                  <button class="btn-secondary compact" id="resetPositionsBtn" style="width: 100%; margin-top: 0.5rem;">
+                    <i class="fas fa-undo"></i> Resetar Posições
+                  </button>
+                </div>
+
+                <div class="settings-group compact">
+                  <h3><i class="fas fa-sliders-h"></i> Sistema</h3>
+                  <div class="setting-row">
+                    <div class="setting-item compact">
+                      <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
+                        <input type="checkbox" id="autoSave">
+                        <span>Auto-salvar Configurações</span>
+                      </label>
+                      <p class="setting-hint">Salva automaticamente ao fazer alterações</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button class="btn-primary compact" id="saveAllSettingsBtn" style="width: 100%; margin-top: 1rem;">
+                <i class="fas fa-save"></i> Salvar
+              </button>
+            </div>
+          </div>
+          
+          <div class="preview-panel">
+            <div class="preview-header">
+              <h3><i class="fas fa-eye"></i> Preview</h3>
+              <button class="btn-secondary compact" id="refreshPreviewBtn">
+                <i class="fas fa-sync-alt"></i>
+              </button>
+            </div>
+            <iframe id="settingsPreviewFrame" src="index.html?preview=true" class="settings-preview-frame"></iframe>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="firebase-config.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
